@@ -1,3 +1,6 @@
+
+require('dotenv').config();
+
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
@@ -25,5 +28,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+
+if(process.env.NODE_ENV === "development") {
+    var corsOptions = {
+        origin: "http://localhost:3000",
+        optionsSuccessStatus: 200,
+    };
+    app.use(cors(corsOptions));
+}
 
 module.exports = app;

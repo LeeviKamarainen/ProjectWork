@@ -1,0 +1,8 @@
+25 Basic DONE
+4 Edit own posts
+5 React DONE
+3 Admin account
+3 Test for accessibility
+2 Last edited timestamp
+2 Pagination DONE
+3 Upvotes
