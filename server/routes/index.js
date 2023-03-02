@@ -3,7 +3,8 @@ var router = express.Router();
 const mongoose = require("mongoose");
 const Books = require("../models/Books");
 const Posts = require("../models/Posts");
-const Useres = require('../models/Users');
+const Users = require('../models/Users');
+const { ObjectId } = require('mongodb');
 //For authentication:
 const jwt = require('jsonwebtoken');
 const validateToken = require('../auth/validateToken.js');
@@ -12,6 +13,9 @@ const bcrypt = require('bcryptjs');
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
+
+
+
 
 
 router.post('/api/book/', function(req, res, next) {
@@ -53,13 +57,18 @@ router.get('/api/posts/', function(req,res,next) {
 })
 
 router.post('/api/codepost/', validateToken, function(req, res, next) {
-  console.log(req.body)
+  let date = new Date();
+  console.log(date.toLocaleString())
     Posts.create(
       {
         name: req.body.name,
         content: req.body.content,
+        edited: date.toLocaleString(),
         userid: req.body.userid,
-        likes: 0,
+        likes: {
+          users: [],
+          votes: []
+        },
         comments: []
       },
       (err, ok) => {
@@ -70,6 +79,7 @@ router.post('/api/codepost/', validateToken, function(req, res, next) {
 
   router.post('/api/codecomment/', validateToken, function(req, res, next) {
     console.log(req.body)
+    let date = new Date();
     Posts.findOne({_id: req.body._id}, (err, post) => {
       if(err) {
         console.log(err);
@@ -80,8 +90,12 @@ router.post('/api/codepost/', validateToken, function(req, res, next) {
         let comment = {
           text: req.body.comment,
           user: req.body.user,
-          userid: req.body.userid
-
+          userid: req.body.userid,
+          edited: date.toLocaleString(),
+          likes: {
+            users:[],
+            votes:[]
+          }
         }
         console.log(post.comments)
         console.log(comment)
@@ -100,14 +114,25 @@ router.post('/api/codepost/', validateToken, function(req, res, next) {
         throw err
       };
       if(post){
-        post.likes = post.likes + req.body.vote;
+        let foundUserIndex = post.likes.users.indexOf(req.body.user)
+        console.log(foundUserIndex)
+        console.log(post.likes.votes)
+        console.log(post.likes.users)
+        if(foundUserIndex >= 0) {
+          post.likes.votes[foundUserIndex] = req.body.vote;
+          post.save()
+          return res.json(post)
+        } else {
+        post.likes.votes.push(req.body.vote);
+        post.likes.users.push(req.body.user)
         post.save()
         return res.json(post)
+        }
       } 
     });
   })
 
-  router.post('/api/editpost/', validateToken, function(req, res, next) {
+  router.post('/api/commentvote/', validateToken, function(req, res, next) {
     console.log(req.body)
     Posts.findOne({_id: req.body._id}, (err, post) => {
       if(err) {
@@ -115,11 +140,85 @@ router.post('/api/codepost/', validateToken, function(req, res, next) {
         throw err
       };
       if(post){
+        let commentIndex = req.body.index;
+        let foundUserIndex = post.comments[commentIndex].likes.users.indexOf(req.body.user)
+        console.log(foundUserIndex)
+        if(foundUserIndex >= 0) {
+          post.comments[commentIndex].likes.votes[foundUserIndex] = req.body.vote;
+          post.save()
+          return res.json(post)
+        } else {
+        post.comments[commentIndex].likes.votes.push(req.body.vote);
+        post.comments[commentIndex].likes.users.push(req.body.user)
+        post.save()
+        return res.json(post)
+        }
+      } 
+    });
+  })
+
+
+
+  router.post('/api/editpost/', validateToken, function(req, res, next) {
+    console.log(req.body)
+    let date = new Date();
+    Posts.findOne({_id: req.body._id}, (err, post) => {
+      if(err) {
+        console.log(err);
+        throw err
+      };
+      if(post){
         post.content = req.body.content;
+        post.edited = date.toLocaleString()
         post.save()
         return res.json(post)
       } 
     });
   })
     
+
+  router.post('/api/editcomment/', validateToken, function(req, res, next) {
+    console.log(req.body)
+    let date = new Date();
+    Posts.findOne({_id: req.body._id}, (err, post) => {
+      if(err) {
+        console.log(err);
+        throw err
+      };
+      if(post){
+        let commentIndex = req.body.index;
+        post.comments[commentIndex].text = req.body.content;
+        post.comments[commentIndex].edited = date.toLocaleString()
+        post.save()
+        return res.json(post)
+      } 
+    });
+  })
+
+
+  router.post('/api/deletecomment/', validateToken, function(req, res, next) {
+    console.log(req.body)
+    Posts.findOne({_id: req.body._id}, (err, post) => {
+      if(err) {
+        console.log(err);
+        throw err
+      };
+      if(post){
+        let commentIndex = req.body.index;
+        post.comments.splice(commentIndex,1)
+        post.save()
+
+      } 
+    });
+  })
+
+  router.post('/api/deletepost/', validateToken, function(req, res, next) {
+    console.log(req.body)
+    Posts.findOneAndRemove({_id: req.body._id}, function(err,data) {
+      if(err) throw err;
+      res.json({delete:"success"})
+    })
+  })
+
+
 module.exports = router;

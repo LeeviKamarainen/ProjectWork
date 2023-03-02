@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const validateToken = require('../auth/validateToken.js');
 const multer = require('multer');
 const { validate } = require('../models/Users');
+const { ObjectId } = require('mongodb');
 const storage = multer.memoryStorage();
 const upload = multer({storage})
 
@@ -48,6 +49,30 @@ upload.none(),
   })
 }
 )
+
+
+// Create admin
+User.findOne({}, async (err,user) => {
+  console.log(user)
+  if(user==null){
+    bcrypt.genSalt(10, (err, salt) => {
+      bcrypt.hash("admin1234567", salt, (err,hash) => {
+        if(err) throw err;
+        User.create(
+          {
+            username: "admin",
+            password: hash,
+            _id: new ObjectId('admin1234567')
+          },
+          (err, ok) => {
+            if(err) throw err;
+            ok.save()
+            console.log(ok._id)
+          });
+        })
+      })
+  }});
+
 
 router.get('/list', (req, res, next) => {
   User.find({}, (err,users) => {
